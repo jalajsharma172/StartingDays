@@ -8,6 +8,7 @@ const app = express();
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
+const PORT = process.env.PORT;
 
 app.get("/", (req, res) => {
     res.send("LinkedIn OAuth Server Running");
@@ -94,12 +95,12 @@ app.get("/auth/callback", async (req, res) => {
 
 });
 
-app.listen(5000, () => {
+app.listen(PORT, () => {
 
     console.log("Server running");
 
     console.log("Open:");
 
-    console.log("http://localhost:5000/auth/linkedin");
+    console.log(`http://localhost:${PORT}/auth/linkedin`);
 
 });
