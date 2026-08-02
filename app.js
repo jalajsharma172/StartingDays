@@ -167,7 +167,7 @@ app.post("/share/text", async (req, res) => {
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "LinkedIn-Version": "202401",
+                    "LinkedIn-Version": "202506",
                     "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json"
                 }
@@ -206,7 +206,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "LinkedIn-Version": "202401",
+                    "LinkedIn-Version": "202506",
                     "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json"
                 }
@@ -218,7 +218,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
 
         // Step 2: Upload Image Binary
         const imageBuffer = fs.readFileSync(imageFile.path);
-        
+
         await axios.put(uploadUrl, imageBuffer, {
             headers: {
                 "Authorization": `Bearer ${accessToken}`,
@@ -249,7 +249,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "LinkedIn-Version": "202401",
+                    "LinkedIn-Version": "202506",
                     "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json"
                 }
