@@ -98,16 +98,16 @@ app.get("/auth/callback", async (req, res) => {
 
         console.log("\nAccess Token:\n");
         console.log(tokenResponse.data);
-        
+
         accessToken = tokenResponse.data.access_token;
-        
+
         // Fetch user profile to get URN
         const profileResponse = await axios.get("https://api.linkedin.com/v2/userinfo", {
             headers: {
                 "Authorization": `Bearer ${accessToken}`
             }
         });
-        
+
         linkedinUserId = profileResponse.data.sub;
         console.log("LinkedIn User ID:", linkedinUserId);
 
@@ -210,7 +210,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
 
         // Step 2: Upload Image Binary
         const imageBuffer = fs.readFileSync(imageFile.path);
-        
+
         await axios.put(uploadUrl, imageBuffer, {
             headers: {
                 "Authorization": `Bearer ${accessToken}`
