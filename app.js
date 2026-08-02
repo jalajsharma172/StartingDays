@@ -167,7 +167,7 @@ app.post("/share/text", async (req, res) => {
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "LinkedIn-Version": "202506",
+                    "LinkedIn-Version": "202607",
                     "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json"
                 }
@@ -206,7 +206,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "LinkedIn-Version": "202506",
+                    "LinkedIn-Version": "202607",
                     "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json"
                 }
@@ -249,7 +249,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "LinkedIn-Version": "202506",
+                    "LinkedIn-Version": "202607",
                     "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json"
                 }
