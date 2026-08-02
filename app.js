@@ -57,6 +57,21 @@ app.get("/auth/callback", async (req, res) => {
         console.log("Authorization Code:");
         console.log(code);
 
+        // --- DEBUG LOGS TO HELP DIAGNOSE RENDER ISSUES ---
+        const safeClientId = process.env.CLIENT_ID ? process.env.CLIENT_ID.trim() : "";
+        const safeClientSecret = process.env.CLIENT_SECRET ? process.env.CLIENT_SECRET.trim() : "";
+        const safeRedirectUri = process.env.REDIRECT_URI ? process.env.REDIRECT_URI.trim() : "";
+
+        console.log("--- DEBUG CREDENTIALS ---");
+        console.log("CLIENT_ID Length:", safeClientId.length);
+        console.log("CLIENT_SECRET Length:", safeClientSecret.length);
+        console.log("REDIRECT_URI Exact:", `"${safeRedirectUri}"`);
+        console.log("-------------------------");
+
+        if (!safeClientId || !safeClientSecret) {
+            return res.status(500).send("Error: CLIENT_ID or CLIENT_SECRET is missing. Check Render Environment Variables.");
+        }
+
         /**
          * Exchange code for Access Token
          */
@@ -68,10 +83,10 @@ app.get("/auth/callback", async (req, res) => {
             new URLSearchParams({
                 grant_type: "authorization_code",
                 code,
-                redirect_uri: REDIRECT_URI,
-                client_id: CLIENT_ID,
-                client_secret: CLIENT_SECRET
-            }),
+                redirect_uri: safeRedirectUri,
+                client_id: safeClientId,
+                client_secret: safeClientSecret
+            }).toString(),
 
             {
                 headers: {
