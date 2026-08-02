@@ -134,29 +134,30 @@ app.post("/share/text", async (req, res) => {
 
     try {
         const response = await axios.post(
-            "https://api.linkedin.com/v2/ugcPosts",
+            "https://api.linkedin.com/rest/posts",
             {
                 author: `urn:li:person:${linkedinUserId}`,
-                lifecycleState: "PUBLISHED",
-                specificContent: {
-                    "com.linkedin.ugc.ShareContent": {
-                        shareCommentary: { text },
-                        shareMediaCategory: "NONE"
-                    }
+                commentary: text,
+                visibility: "PUBLIC",
+                distribution: {
+                    feedDistribution: "MAIN_FEED",
+                    targetEntities: [],
+                    thirdPartyDistributionChannels: []
                 },
-                visibility: {
-                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-                }
+                lifecycleState: "PUBLISHED",
+                isReshareDisabledByAuthor: false
             },
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "X-Restli-Protocol-Version": "2.0.0"
+                    "LinkedIn-Version": "202401",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                    "Content-Type": "application/json"
                 }
             }
         );
 
-        res.json({ success: true, data: response.data });
+        res.json({ success: true, data: response.data || "Success" });
     } catch (err) {
         console.error(err.response?.data || err.message);
         res.status(500).json({ error: err.response?.data || err.message });
@@ -177,70 +178,63 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
     }
 
     try {
-        // Step 1: Register Upload
+        // Step 1: Initialize Image Upload
         const registerResponse = await axios.post(
-            "https://api.linkedin.com/v2/assets?action=registerUpload",
+            "https://api.linkedin.com/rest/images?action=initializeUpload",
             {
-                registerUploadRequest: {
-                    recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
-                    owner: `urn:li:person:${linkedinUserId}`,
-                    serviceRelationships: [
-                        {
-                            relationshipType: "OWNER",
-                            identifier: "urn:li:userGeneratedContent"
-                        }
-                    ]
+                initializeUploadRequest: {
+                    owner: `urn:li:person:${linkedinUserId}`
                 }
             },
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "X-Restli-Protocol-Version": "2.0.0"
+                    "LinkedIn-Version": "202401",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                    "Content-Type": "application/json"
                 }
             }
         );
 
-        const uploadMechanism = registerResponse.data.value.uploadMechanism["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"];
-        const uploadUrl = uploadMechanism.uploadUrl;
-        const asset = registerResponse.data.value.asset;
+        const uploadUrl = registerResponse.data.value.uploadUrl;
+        const imageUrn = registerResponse.data.value.image;
 
         // Step 2: Upload Image Binary
         const imageBuffer = fs.readFileSync(imageFile.path);
-
+        
         await axios.put(uploadUrl, imageBuffer, {
             headers: {
-                "Authorization": `Bearer ${accessToken}`
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/octet-stream"
             }
         });
 
         // Step 3: Create Post with Image
         const postResponse = await axios.post(
-            "https://api.linkedin.com/v2/ugcPosts",
+            "https://api.linkedin.com/rest/posts",
             {
                 author: `urn:li:person:${linkedinUserId}`,
-                lifecycleState: "PUBLISHED",
-                specificContent: {
-                    "com.linkedin.ugc.ShareContent": {
-                        shareCommentary: { text },
-                        shareMediaCategory: "IMAGE",
-                        media: [
-                            {
-                                status: "READY",
-                                description: { text: "Image description" },
-                                media: asset,
-                                title: { text: "Image title" }
-                            }
-                        ]
+                commentary: text,
+                visibility: "PUBLIC",
+                distribution: {
+                    feedDistribution: "MAIN_FEED",
+                    targetEntities: [],
+                    thirdPartyDistributionChannels: []
+                },
+                content: {
+                    media: {
+                        id: imageUrn
                     }
                 },
-                visibility: {
-                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-                }
+                lifecycleState: "PUBLISHED",
+                isReshareDisabledByAuthor: false
             },
             {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
-                    "X-Restli-Protocol-Version": "2.0.0"
+                    "LinkedIn-Version": "202401",
+                    "X-Restli-Protocol-Version": "2.0.0",
+                    "Content-Type": "application/json"
                 }
             }
         );
@@ -248,7 +242,7 @@ app.post("/share/image", upload.single("image"), async (req, res) => {
         // Clean up the uploaded file
         fs.unlinkSync(imageFile.path);
 
-        res.json({ success: true, data: postResponse.data });
+        res.json({ success: true, data: postResponse.data || "Success" });
     } catch (err) {
         if (imageFile && fs.existsSync(imageFile.path)) {
             fs.unlinkSync(imageFile.path); // cleanup on error
