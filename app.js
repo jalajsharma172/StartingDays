@@ -2,17 +2,25 @@ require("dotenv").config();
 
 const express = require("express");
 const axios = require("axios");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
+app.use(express.json());
+app.use(express.static("public"));
+
+const upload = multer({ dest: "uploads/" });
+
+let accessToken = null;
+let linkedinUserId = null;
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 const PORT = process.env.PORT;
 
-app.get("/", (req, res) => {
-    res.send("LinkedIn OAuth Server Running");
-});
+// Serving static frontend via public folder
 
 /**
  * Step 1
@@ -74,15 +82,25 @@ app.get("/auth/callback", async (req, res) => {
         );
 
         console.log("\nAccess Token:\n");
-
         console.log(tokenResponse.data);
+        
+        accessToken = tokenResponse.data.access_token;
+        
+        // Fetch user profile to get URN
+        const profileResponse = await axios.get("https://api.linkedin.com/v2/userinfo", {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`
+            }
+        });
+        
+        linkedinUserId = profileResponse.data.sub;
+        console.log("LinkedIn User ID:", linkedinUserId);
 
         res.send(`
             <h2>Authorization Successful</h2>
-
-            <pre>${JSON.stringify(tokenResponse.data, null, 2)}</pre>
-
-            <p>Copy the access_token and store it securely.</p>
+            <p>Access Token acquired.</p>
+            <p>LinkedIn User ID: <strong>${linkedinUserId}</strong></p>
+            <a href="/">Go to Share Dashboard</a>
         `);
 
     } catch (err) {
@@ -93,6 +111,140 @@ app.get("/auth/callback", async (req, res) => {
 
     }
 
+});
+
+// Endpoint to post plain text
+app.post("/share/text", async (req, res) => {
+    const { text } = req.body;
+
+    if (!accessToken || !linkedinUserId) {
+        return res.status(401).json({ error: "Not authorized. Please login first." });
+    }
+
+    try {
+        const response = await axios.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            {
+                author: `urn:li:person:${linkedinUserId}`,
+                lifecycleState: "PUBLISHED",
+                specificContent: {
+                    "com.linkedin.ugc.ShareContent": {
+                        shareCommentary: { text },
+                        shareMediaCategory: "NONE"
+                    }
+                },
+                visibility: {
+                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+                }
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "X-Restli-Protocol-Version": "2.0.0"
+                }
+            }
+        );
+
+        res.json({ success: true, data: response.data });
+    } catch (err) {
+        console.error(err.response?.data || err.message);
+        res.status(500).json({ error: err.response?.data || err.message });
+    }
+});
+
+// Endpoint to post text + image
+app.post("/share/image", upload.single("image"), async (req, res) => {
+    const { text } = req.body;
+    const imageFile = req.file;
+
+    if (!accessToken || !linkedinUserId) {
+        return res.status(401).json({ error: "Not authorized. Please login first." });
+    }
+
+    if (!imageFile) {
+        return res.status(400).json({ error: "No image provided." });
+    }
+
+    try {
+        // Step 1: Register Upload
+        const registerResponse = await axios.post(
+            "https://api.linkedin.com/v2/assets?action=registerUpload",
+            {
+                registerUploadRequest: {
+                    recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+                    owner: `urn:li:person:${linkedinUserId}`,
+                    serviceRelationships: [
+                        {
+                            relationshipType: "OWNER",
+                            identifier: "urn:li:userGeneratedContent"
+                        }
+                    ]
+                }
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "X-Restli-Protocol-Version": "2.0.0"
+                }
+            }
+        );
+
+        const uploadMechanism = registerResponse.data.value.uploadMechanism["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"];
+        const uploadUrl = uploadMechanism.uploadUrl;
+        const asset = registerResponse.data.value.asset;
+
+        // Step 2: Upload Image Binary
+        const imageBuffer = fs.readFileSync(imageFile.path);
+        
+        await axios.put(uploadUrl, imageBuffer, {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`
+            }
+        });
+
+        // Step 3: Create Post with Image
+        const postResponse = await axios.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            {
+                author: `urn:li:person:${linkedinUserId}`,
+                lifecycleState: "PUBLISHED",
+                specificContent: {
+                    "com.linkedin.ugc.ShareContent": {
+                        shareCommentary: { text },
+                        shareMediaCategory: "IMAGE",
+                        media: [
+                            {
+                                status: "READY",
+                                description: { text: "Image description" },
+                                media: asset,
+                                title: { text: "Image title" }
+                            }
+                        ]
+                    }
+                },
+                visibility: {
+                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+                }
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "X-Restli-Protocol-Version": "2.0.0"
+                }
+            }
+        );
+
+        // Clean up the uploaded file
+        fs.unlinkSync(imageFile.path);
+
+        res.json({ success: true, data: postResponse.data });
+    } catch (err) {
+        if (imageFile && fs.existsSync(imageFile.path)) {
+            fs.unlinkSync(imageFile.path); // cleanup on error
+        }
+        console.error(err.response?.data || err.message);
+        res.status(500).json({ error: err.response?.data || err.message });
+    }
 });
 
 app.listen(PORT, () => {

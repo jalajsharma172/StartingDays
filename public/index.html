@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Auto Post</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .card h3 { margin-top: 0; }
+        textarea, input[type="file"] { width: 100%; margin-bottom: 15px; }
+        textarea { height: 80px; box-sizing: border-box; }
+        button { background: #0077b5; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005582; }
+        .status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; }
+        .status.success { background: #d4edda; color: #155724; display: block; }
+        .status.error { background: #f8d7da; color: #721c24; display: block; }
+    </style>
+</head>
+<body>
+
+    <h2>LinkedIn Share Dashboard</h2>
+    <p>Please <a href="/auth/linkedin">login first</a> if you haven't already.</p>
+
+    <div class="card">
+        <h3>Share Text Update</h3>
+        <form id="textForm">
+            <textarea id="textContent" placeholder="What do you want to talk about?" required></textarea>
+            <button type="submit">Post to LinkedIn</button>
+        </form>
+        <div id="textStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+        <h3>Share Image Update</h3>
+        <form id="imageForm">
+            <textarea id="imageTextContent" placeholder="Describe this image..." required></textarea>
+            <input type="file" id="imageFile" accept="image/*" required>
+            <button type="submit">Post to LinkedIn</button>
+        </form>
+        <div id="imageStatus" class="status"></div>
+    </div>
+
+    <script>
+        document.getElementById('textForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('textStatus');
+            statusEl.className = 'status';
+            statusEl.textContent = 'Posting...';
+            statusEl.style.display = 'block';
+
+            const text = document.getElementById('textContent').value;
+
+            try {
+                const response = await fetch('/share/text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'Successfully posted to LinkedIn!';
+                    document.getElementById('textContent').value = '';
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Error: ' + JSON.stringify(data.error || 'Unknown error');
+                }
+            } catch (err) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Request failed: ' + err.message;
+            }
+        });
+
+        document.getElementById('imageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('imageStatus');
+            statusEl.className = 'status';
+            statusEl.textContent = 'Uploading and Posting...';
+            statusEl.style.display = 'block';
+
+            const text = document.getElementById('imageTextContent').value;
+            const file = document.getElementById('imageFile').files[0];
+
+            const formData = new FormData();
+            formData.append('text', text);
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/share/image', {
+                    method: 'POST',
+                    body: formData // No Content-Type header; fetch sets it to multipart/form-data with boundary automatically
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'Successfully posted to LinkedIn!';
+                    document.getElementById('imageTextContent').value = '';
+                    document.getElementById('imageFile').value = '';
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Error: ' + JSON.stringify(data.error || 'Unknown error');
+                }
+            } catch (err) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Request failed: ' + err.message;
+            }
+        });
+    </script>
+</body>
+</html>
