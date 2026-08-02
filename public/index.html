@@ -5,43 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkedIn Auto Post</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f3f2ef; }
+        .navbar { background-color: #ffffff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0dfdc; }
+        .navbar h2 { margin: 0; color: #0a66c2; font-size: 20px; }
+        .nav-actions { display: flex; align-items: center; gap: 15px; }
+        .status-badge { padding: 5px 10px; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .status-badge.logged-in { background-color: #d4edda; color: #155724; }
+        .status-badge.logged-out { background-color: #f8d7da; color: #721c24; }
+        .btn-auth { text-decoration: none; padding: 8px 16px; border-radius: 24px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; }
+        .btn-login { background-color: #0a66c2; color: white; }
+        .btn-login:hover { background-color: #004182; }
+        .btn-logout { background-color: transparent; color: #0a66c2; border: 1px solid #0a66c2; }
+        .btn-logout:hover { background-color: #e0f0fe; }
+        
+        .container { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+        .card { background: white; border: 1px solid #e0dfdc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
         .card h3 { margin-top: 0; }
         textarea, input[type="file"] { width: 100%; margin-bottom: 15px; }
-        textarea { height: 80px; box-sizing: border-box; }
-        button { background: #0077b5; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #005582; }
+        textarea { height: 80px; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+        button[type="submit"] { background: #0a66c2; color: white; border: none; padding: 10px 15px; border-radius: 24px; font-weight: 600; cursor: pointer; }
+        button[type="submit"]:hover { background: #004182; }
         .status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; }
         .status.success { background: #d4edda; color: #155724; display: block; }
         .status.error { background: #f8d7da; color: #721c24; display: block; }
+        
+        #dashboardContent { display: none; }
     </style>
 </head>
 <body>
 
-    <h2>LinkedIn Share Dashboard</h2>
-    <p>Please <a href="/auth/linkedin">login first</a> if you haven't already.</p>
-
-    <div class="card">
-        <h3>Share Text Update</h3>
-        <form id="textForm">
-            <textarea id="textContent" placeholder="What do you want to talk about?" required></textarea>
-            <button type="submit">Post to LinkedIn</button>
-        </form>
-        <div id="textStatus" class="status"></div>
+    <div class="navbar">
+        <h2>LinkedIn Share</h2>
+        <div class="nav-actions">
+            <span id="authStatusBadge" class="status-badge logged-out">Checking status...</span>
+            <a href="/auth/linkedin" id="loginBtn" class="btn-auth btn-login" style="display: none;">Login</a>
+            <button id="logoutBtn" class="btn-auth btn-logout" style="display: none;">Logout</button>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>Share Image Update</h3>
-        <form id="imageForm">
-            <textarea id="imageTextContent" placeholder="Describe this image..." required></textarea>
-            <input type="file" id="imageFile" accept="image/*" required>
-            <button type="submit">Post to LinkedIn</button>
-        </form>
-        <div id="imageStatus" class="status"></div>
+    <div class="container">
+        <div id="loginPrompt" style="text-align: center; margin-top: 50px;">
+            <h3>Welcome to LinkedIn Share</h3>
+            <p>Please login to start posting to your LinkedIn feed.</p>
+        </div>
+
+        <div id="dashboardContent">
+            <div class="card">
+                <h3>Share Text Update</h3>
+                <form id="textForm">
+                    <textarea id="textContent" placeholder="What do you want to talk about?" required></textarea>
+                    <button type="submit">Post to LinkedIn</button>
+                </form>
+                <div id="textStatus" class="status"></div>
+            </div>
+
+            <div class="card">
+                <h3>Share Image Update</h3>
+                <form id="imageForm">
+                    <textarea id="imageTextContent" placeholder="Describe this image..." required></textarea>
+                    <input type="file" id="imageFile" accept="image/*" required>
+                    <button type="submit">Post to LinkedIn</button>
+                </form>
+                <div id="imageStatus" class="status"></div>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Check Auth Status on Load
+        async function checkAuth() {
+            try {
+                const res = await fetch('/auth/status');
+                const data = await res.json();
+                
+                const badge = document.getElementById('authStatusBadge');
+                const loginBtn = document.getElementById('loginBtn');
+                const logoutBtn = document.getElementById('logoutBtn');
+                const dashboard = document.getElementById('dashboardContent');
+                const loginPrompt = document.getElementById('loginPrompt');
+
+                if (data.loggedIn) {
+                    badge.textContent = 'Logged In';
+                    badge.className = 'status-badge logged-in';
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'inline-block';
+                    dashboard.style.display = 'block';
+                    loginPrompt.style.display = 'none';
+                } else {
+                    badge.textContent = 'Not Logged In';
+                    badge.className = 'status-badge logged-out';
+                    loginBtn.style.display = 'inline-block';
+                    logoutBtn.style.display = 'none';
+                    dashboard.style.display = 'none';
+                    loginPrompt.style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Error checking auth status", err);
+            }
+        }
+
+        // Handle Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/auth/logout', { method: 'POST' });
+            checkAuth(); // Refresh UI
+        });
+
+        // Handle Post Text
         document.getElementById('textForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const statusEl = document.getElementById('textStatus');
@@ -73,6 +142,7 @@
             }
         });
 
+        // Handle Post Image
         document.getElementById('imageForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const statusEl = document.getElementById('imageStatus');
@@ -108,6 +178,9 @@
                 statusEl.textContent = 'Request failed: ' + err.message;
             }
         });
+
+        // Initial check
+        checkAuth();
     </script>
 </body>
 </html>

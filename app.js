@@ -111,17 +111,34 @@ app.get("/auth/callback", async (req, res) => {
             <h2>Authorization Successful</h2>
             <p>Access Token acquired.</p>
             <p>LinkedIn User ID: <strong>${linkedinUserId}</strong></p>
+            <script>
+                // Redirect to dashboard after a short delay
+                setTimeout(() => window.location.href = "/", 2000);
+            </script>
             <a href="/">Go to Share Dashboard</a>
         `);
 
     } catch (err) {
 
         console.log(err.response?.data || err.message);
-
-        res.status(500).send(err.response?.data || err.message);
-
+        res.status(500).send("Error exchanging token");
     }
+});
 
+// Endpoint to check auth status
+app.get("/auth/status", (req, res) => {
+    if (accessToken && linkedinUserId) {
+        res.json({ loggedIn: true, userId: linkedinUserId });
+    } else {
+        res.json({ loggedIn: false });
+    }
+});
+
+// Endpoint to logout
+app.post("/auth/logout", (req, res) => {
+    accessToken = null;
+    linkedinUserId = null;
+    res.json({ success: true });
 });
 
 // Endpoint to post plain text
