@@ -77,23 +77,18 @@ app.get("/auth/callback", async (req, res) => {
          */
 
         const tokenResponse = await axios.post(
-
             "https://www.linkedin.com/oauth/v2/accessToken",
-
             new URLSearchParams({
                 grant_type: "authorization_code",
                 code,
-                redirect_uri: safeRedirectUri,
-                client_id: safeClientId,
-                client_secret: safeClientSecret
+                redirect_uri: safeRedirectUri
             }).toString(),
-
             {
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": "Basic " + Buffer.from(safeClientId + ":" + safeClientSecret).toString("base64")
                 }
             }
-
         );
 
         console.log("\nAccess Token:\n");
